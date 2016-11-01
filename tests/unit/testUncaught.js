@@ -30,21 +30,29 @@ function reattachOriginalListeners ( ) {
   }
 }
 
+// Returns a Configuration object with given value for reportUncaughtExceptions,
+// and dummy logger
+function getConfig(reportUncaughtExceptions) {
+  return new Configuration({
+    reportUncaughtExceptions: reportUncaughtExceptions
+  });
+}
+
 test('Uncaught handler setup', function (t) {
   t.throws(uncaughtSetup, undefined, 'Should throw given no configuration');
-  t.doesNotThrow(uncaughtSetup.bind(null, {}, {reportUncaughtExceptions: true}), undefined,
+  t.doesNotThrow(uncaughtSetup.bind(null, {}, getConfig(true)), undefined,
     'Should not throw given valid configuration');
-  t.doesNotThrow(uncaughtSetup.bind(null, {}, {reportUncaughtExceptions: false}), undefined,
+  t.doesNotThrow(uncaughtSetup.bind(null, {}, getConfig(false)), undefined,
     'Should not throw given valid configuration');
-  t.assert(process === uncaughtSetup({}, {}),
-    'Should the process on successful initialization');
+  t.assert(process === uncaughtSetup({}, getConfig(true)),
+    'Should return the process on successful initialization');
   process.removeAllListeners('uncaughtException');
   t.deepEqual(process.listeners('uncaughtException').length, 0,
     'There should be no listeners');
-  uncaughtSetup({}, {reportUncaughtExceptions: false});
+  uncaughtSetup({}, getConfig(false));
   t.deepEqual(process.listeners('uncaughtException').length, 0,
     'There should be no listeners if reportUncaughtExceptions is false');
-  uncaughtSetup({}, {reportUncaughtExceptions: true});
+  uncaughtSetup({}, getConfig(true));
   t.deepEqual(process.listeners('uncaughtException').length, 1,
     'There should be one listener if reportUncaughtExceptions is true');
   process.removeAllListeners('uncaughtException');
