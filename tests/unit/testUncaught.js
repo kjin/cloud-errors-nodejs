@@ -16,11 +16,9 @@
 
 var test = require('tape');
 var lodash = require('lodash');
-var isFunction = lodash.isFunction;
 var isString = lodash.isString;
 var uncaughtSetup = require('../../lib/interfaces/uncaught.js');
-var Configuration = require('../../lib/configuration.js');
-var ErrorMessage = require('../../lib/classes/error-message.js');
+var Configuration = require('../fixtures/configuration.js');
 var originalHandlers = process.listeners('uncaughtException');
 var fork = require('child_process').fork;
 

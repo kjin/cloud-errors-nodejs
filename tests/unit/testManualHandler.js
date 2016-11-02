@@ -16,7 +16,7 @@
 
 var test = require('tape');
 var manual = require('../../lib/interfaces/manual.js');
-var Configuration = require('../../lib/configuration.js');
+var Configuration = require('../fixtures/configuration.js');
 var config = new Configuration({});
 var ErrorMessage = require('../../lib/classes/error-message.js');
 
