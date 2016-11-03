@@ -1,4 +1,4 @@
-# Node.js module for Stackdriver Error Reporting
+# Stackdriver Error Reporting agent for Node.js
 
 [![Build Status](https://travis-ci.org/GoogleCloudPlatform/cloud-errors-nodejs.svg?branch=master)](https://travis-ci.org/GoogleCloudPlatform/cloud-errors-nodejs)
 [![Coverage Status](https://coveralls.io/repos/github/GoogleCloudPlatform/cloud-errors-nodejs/badge.svg?branch=coveralls)](https://coveralls.io/github/GoogleCloudPlatform/cloud-errors-nodejs?branch=coveralls)
@@ -21,7 +21,7 @@ applications running in almost any environment. Here's an introductory video:
 1. [Enable the Stackdriver Error Reporting API](https://console.cloud.google.com/apis/api/clouderrorreporting.googleapis.com/overview) for your project.
 1. The module will only send errors when the `NODE_ENV` environment variable is set to `production`.
 
-## Quickstart on Google Cloud Platform
+## Quick Start
 
 1. **Install the module:**
 
@@ -47,16 +47,41 @@ applications running in almost any environment. Here's an introductory video:
 
   Open Stackdriver Error Reporting at https://console.cloud.google.com/errors to view the reported errors.
 
-## Setup
+## Running on Google Cloud Platform
 
-When initing the Stackdriver Error Reporting library you must specify the following:
+There are three different services that can host Node.js application to Google Cloud Platform.
 
-* **Authentication**: Use one of the following:
-  * **(recommended)** a path to your keyfile in the `GOOGLE_APPLICATION_CREDENTIALS` environment variable,
-  * a path to your keyfile in the `keyFilename` argument,
-  * an [API key](https://support.google.com/cloud/answer/6158862) string in the `key` argument.
-* **projectId**: either using the `GLCOUD_PROJECT` environment variable or the `projectId` argument.
-* **service**: either using the `GAE_MODULE_NAME`  environment variable or the `serviceContext.service` argument.
+### Google App Engine flexible environment
+
+If you are using [Google App Engine flexible environment](https://cloud.google.com/appengine/docs/flexible/), you do not have to do any additional configuration.
+
+### Google Compute Engine
+
+Your VM instances need to be created with the `https://www.googleapis.com/auth/cloud-platform` scope if created via the [gcloud](https://cloud.google.com/sdk) CLI or the Google Cloud Platform API, or by enabling at least one of the Stackdriver APIs if created through the browser-based console.
+
+If you already have VMs that were created without API access and do not wish to recreate it, you can follow the instructions for using a service account under [running elsewhere](#running-elsewhere).
+
+### Google Container Engine
+
+Container Engine nodes need to also be created with the `https://www.googleapis.com/auth/cloud-platform` scope, which is configurable during cluster creation. Alternatively, you can follow the instructions for using a service account under [running elsewhere](#running-elsewhere). It's recommended that you store the service account credentials as [Kubernetes Secret](http://kubernetes.io/v1.1/docs/user-guide/secrets.html).
+
+## Running elsewhere
+
+If your application is running outside of Google Cloud Platform, such as locally, on-premise, or on another cloud provider, you can still use Stackdriver Errors.
+
+1. You will need to specify your project ID when starting the errors agent.
+
+        GCLOUD_PROJECT=particular-future-12345 node myapp.js
+
+1. You need to provide service account credentials to your application. The recommended way is via [Application Default Credentials][app-default-credentials].
+
+  1. [Create a new JSON service account key][service-account].
+  1. Copy the key somewhere your application can access it. Be sure not to expose the key publicly.
+  1. Set the environment variable `GOOGLE_APPLICATION_CREDENTIALS` to the full path to the key. The trace agent will automatically look for this environment variable.
+
+If you are running your application on a development machine or test environment where you are using the [`gcloud` command line tools][gcloud-sdk], and are logged using `gcloud beta auth application-default login`, you already have sufficient credentials, and a service account key is not required.
+
+Alternatively, you may set the `keyFilename` or `credentials` configuration field to the full path or contents to the key file, respectively. Setting either of these fields will override either setting `GOOGLE_APPLICATION_CREDENTIALS` or logging in using `gcloud`. (See the [default configuration](config.js) for more details.)
 
 On Google App Engine, these environment variables are already set.
 
@@ -72,6 +97,8 @@ var errors = require('@google/cloud-errors').start({
 	}
 });
 ```
+
+## Examples
 
 ### Using Express
 
@@ -158,7 +185,7 @@ server.head('/hello/:name', respond);
 server.listen(8080);
 ```
 
-## Developing the library
+## Contributing changes
 
 Install the dependencies:
 
