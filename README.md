@@ -1,4 +1,4 @@
-# Stackdriver Error Reporting agent for Node.js
+# Stackdriver Error Reporting Agent for Node.js
 
 [![Build Status](https://travis-ci.org/GoogleCloudPlatform/cloud-errors-nodejs.svg?branch=master)](https://travis-ci.org/GoogleCloudPlatform/cloud-errors-nodejs)
 [![Coverage Status](https://coveralls.io/repos/github/GoogleCloudPlatform/cloud-errors-nodejs/badge.svg?branch=coveralls)](https://coveralls.io/github/GoogleCloudPlatform/cloud-errors-nodejs?branch=coveralls)
@@ -73,30 +73,26 @@ If your application is running outside of Google Cloud Platform, such as locally
 
         GCLOUD_PROJECT=particular-future-12345 node myapp.js
 
-1. You need to provide service account credentials to your application. The recommended way is via [Application Default Credentials][app-default-credentials].
+1. You need to provide service account credentials to your application.
+  * The recommended way is via [Application Default Credentials][app-default-credentials].\
+    1. [Create a new JSON service account key][service-account].
+    1. Copy the key somewhere your application can access it. Be sure not to expose the key publicly.
+    1. Set the environment variable `GOOGLE_APPLICATION_CREDENTIALS` to the full path to the key. The trace agent will automatically look for this environment variable.
+  * If you are running your application on a development machine or test environment where you are using the [`gcloud` command line tools][gcloud-sdk], and are logged using `gcloud beta auth application-default login`, you already have sufficient credentials, and a service account key is not required.
+  * Alternatively, you may set the `keyFilename` or `credentials` configuration field to the full path or contents to the key file, respectively. Setting either of these fields will override either setting `GOOGLE_APPLICATION_CREDENTIALS` or logging in using `gcloud`. For example:
 
-  1. [Create a new JSON service account key][service-account].
-  1. Copy the key somewhere your application can access it. Be sure not to expose the key publicly.
-  1. Set the environment variable `GOOGLE_APPLICATION_CREDENTIALS` to the full path to the key. The trace agent will automatically look for this environment variable.
+    ```JS
+    // Require and start the agent with configuration options
+    var errors = require('@google/cloud-errors').start({
+      // The path to your key file:
+      keyFilename: '/path/to/keyfile.json',
 
-If you are running your application on a development machine or test environment where you are using the [`gcloud` command line tools][gcloud-sdk], and are logged using `gcloud beta auth application-default login`, you already have sufficient credentials, and a service account key is not required.
-
-Alternatively, you may set the `keyFilename` or `credentials` configuration field to the full path or contents to the key file, respectively. Setting either of these fields will override either setting `GOOGLE_APPLICATION_CREDENTIALS` or logging in using `gcloud`. (See the [default configuration](config.js) for more details.)
+      // Or the contents of the key file:
+      credentials: require('./path/to/keyfile.json')
+    });
+    ```
 
 On Google App Engine, these environment variables are already set.
-
-```JS
-var errors = require('@google/cloud-errors').start({
-	projectId: 'my-project-id',
-	key: 'my-api-key',
-	reportUncaughtExceptions: false, // defaults to true.
-	logLevel: 0, // defaults to logging warnings (2). Available levels: 0-5
-	serviceContext: {
-		service: 'my-service',
-		version: 'my-service-version'
-	}
-});
-```
 
 ## Examples
 
@@ -225,3 +221,7 @@ git commit
 ```
 
 *Then commit your changes and make a pull-request*
+
+[gcloud-sdk]: https://cloud.google.com/sdk/gcloud/
+[app-default-credentials]: https://developers.google.com/identity/protocols/application-default-credentials
+[service-account]: https://console.developers.google.com/apis/credentials/serviceaccountkey
