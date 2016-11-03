@@ -94,6 +94,25 @@ If your application is running outside of Google Cloud Platform, such as locally
 
 On Google App Engine, these environment variables are already set.
 
+## Configuration
+
+The following code snippet lists all available configuration options. All configuration options are optional.
+
+```js
+var errors = require('@google/cloud-errors').start({
+    projectId: 'my-project-id',
+    keyFilename: '/path/to/keyfile.json',
+    credentials: require('./path/to/keyfile.json'),
+    key: 'my-api-key', // if specified, uses this value to authenticate each request individually.
+    reportUncaughtExceptions: false, // defaults to true.
+    logLevel: 0, // defaults to logging warnings (2). Available levels: 0-5
+    serviceContext: {
+        service: 'my-service',
+        version: 'my-service-version'
+    }
+});
+```
+
 ## Examples
 
 ### Using Express
