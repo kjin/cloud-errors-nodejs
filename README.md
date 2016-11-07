@@ -49,8 +49,6 @@ applications running in almost any environment. Here's an introductory video:
 
 ## Running on Google Cloud Platform
 
-There are three different services that can host Node.js application to Google Cloud Platform.
-
 ### Google App Engine flexible environment
 
 If you are using [Google App Engine flexible environment](https://cloud.google.com/appengine/docs/flexible/), you do not have to do any additional configuration.
