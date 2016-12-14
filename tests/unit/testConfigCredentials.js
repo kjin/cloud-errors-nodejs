@@ -15,8 +15,8 @@
  */
 'use strict';
 
-var test = require('tape');
 var path = require('path');
+var assert = require('assert');
 var nock = require('nock');
 var http = require('http');
 var express = require('express');
@@ -32,145 +32,144 @@ function reattachOriginalListeners() {
 process.env.GCLOUD_PROJECT = '0';
 process.env.NODE_ENV = 'production';
 
-test('Should use the keyFilename field of the config object', function(t) {
-  process.removeAllListeners('uncaughtException');
-  var credentials = require('../fixtures/gcloud-credentials.json');
-  var config = {
-    keyFilename: path.join('tests', 'fixtures', 'gcloud-credentials.json'),
-    reportUncaughtExceptions: false
-  };
-  var agent = require('../..').start(config);
-  var app = express();
-  app.use('/', function () {
-    throw '0';
+describe('test-config-credentials', function() {
+  it('should use the keyFilename field of the config object', function(done) {
+    process.removeAllListeners('uncaughtException');
+    var credentials = require('../fixtures/gcloud-credentials.json');
+    var config = {
+      keyFilename: path.join('tests', 'fixtures', 'gcloud-credentials.json'),
+      reportUncaughtExceptions: false
+    };
+    var agent = require('../..').start(config);
+    var app = express();
+    app.use('/', function () {
+      throw '0';
+    });
+    app.use(agent.express);
+    var server = app.listen(3000, function() {
+      nock.disableNetConnect();
+      nock.enableNetConnect('localhost');
+      var scope = nock('https://accounts.google.com')
+        .intercept('/o/oauth2/token', 'POST', function(body) {
+          assert.equal(body.client_id, credentials.client_id);
+          assert.equal(body.client_secret, credentials.client_secret);
+          assert.equal(body.refresh_token, credentials.refresh_token);
+          return true;
+        }).reply(200, {
+          refresh_token: 'hello',
+          access_token: 'goodbye',
+          expiry_date: new Date(9999, 1, 1)
+        });
+
+      // Since we have to get an auth token, this always gets intercepted second
+      nock('https://clouderrorreporting.googleapis.com/v1beta1/projects')
+        .post('/0/events:report', function() {
+          assert(scope.isDone());
+          nock.cleanAll();
+          server.close();
+          reattachOriginalListeners();
+          setImmediate(done);
+          return true;
+        }).reply(200);
+
+      http.get({port: 3000, path: '/'}, function(res) {});
+    });
   });
-  app.use(agent.express);
-  var server = app.listen(3000, function() {
-    nock.disableNetConnect();
-    nock.enableNetConnect('localhost');
-    var scope = nock('https://accounts.google.com')
-      .intercept('/o/oauth2/token', 'POST', function(body) {
-        t.equal(body.client_id, credentials.client_id);
-        t.equal(body.client_secret, credentials.client_secret);
-        t.equal(body.refresh_token, credentials.refresh_token);
-        return true;
-      }).reply(200, {
-        refresh_token: 'hello',
-        access_token: 'goodbye',
-        expiry_date: new Date(9999, 1, 1)
-      });
 
-    // Since we have to get an auth token, this always gets intercepted second
-    nock('https://clouderrorreporting.googleapis.com/v1beta1/projects')
-      .post('/0/events:report', function() {
-        t.true(scope.isDone());
-        nock.enableNetConnect();
-        nock.cleanAll();
-        server.close();
-        reattachOriginalListeners();
-        t.end();
-        return true;
-      }).reply(200);
+  it('should use the credentials field of the config object', function(done) {
+    process.removeAllListeners('uncaughtException');
+    var config = {
+      credentials: require('../fixtures/gcloud-credentials.json'),
+      reportUncaughtExceptions: false
+    };
+    var agent = require('../..').start(config);
+    var app = express();
+    app.use('/', function () {
+      throw '0';
+    });
+    app.use(agent.express);
+    var server = app.listen(3000, function() {
+      nock.disableNetConnect();
+      nock.enableNetConnect('localhost');
+      var scope = nock('https://accounts.google.com')
+        .intercept('/o/oauth2/token', 'POST', function(body) {
+          assert.equal(body.client_id, config.credentials.client_id);
+          assert.equal(body.client_secret, config.credentials.client_secret);
+          assert.equal(body.refresh_token, config.credentials.refresh_token);
+          return true;
+        }).reply(200, {
+          refresh_token: 'hello',
+          access_token: 'goodbye',
+          expiry_date: new Date(9999, 1, 1)
+        });
 
-    http.get({port: 3000, path: '/'}, function(res) {});
+      // Since we have to get an auth token, this always gets intercepted second
+      nock('https://clouderrorreporting.googleapis.com/v1beta1/projects')
+        .post('/0/events:report', function() {
+          assert(scope.isDone());
+          nock.cleanAll();
+          server.close();
+          reattachOriginalListeners();
+          setImmediate(done);
+          return true;
+        }).reply(200);
+
+      http.get({port: 3000, path: '/'}, function(res) {});
+    });
   });
-});
 
-test('should use the credentials field of the config object', function(t) {
-  process.removeAllListeners('uncaughtException');
-  var config = {
-    credentials: require('../fixtures/gcloud-credentials.json'),
-    reportUncaughtExceptions: false
-  };
-  var agent = require('../..').start(config);
-  var app = express();
-  app.use('/', function () {
-    throw '0';
-  });
-  app.use(agent.express);
-  var server = app.listen(3000, function() {
-    nock.disableNetConnect();
-    nock.enableNetConnect('localhost');
-    var scope = nock('https://accounts.google.com')
-      .intercept('/o/oauth2/token', 'POST', function(body) {
-        t.equal(body.client_id, config.credentials.client_id);
-        t.equal(body.client_secret, config.credentials.client_secret);
-        t.equal(body.refresh_token, config.credentials.refresh_token);
-        return true;
-      }).reply(200, {
-        refresh_token: 'hello',
-        access_token: 'goodbye',
-        expiry_date: new Date(9999, 1, 1)
-      });
+  it('should ignore credentials if keyFilename is provided', function(done) {
+    process.removeAllListeners('uncaughtException');
+    var correctCredentials = require('../fixtures/gcloud-credentials.json');
+    var config = {
+      keyFilename: path.join('tests', 'fixtures', 'gcloud-credentials.json'),
+      credentials: {
+        client_id: 'a',
+        client_secret: 'b',
+        refresh_token: 'c',
+        type: 'authorized_user'
+      },
+      reportUncaughtExceptions: true
+    };
+    ['client_id', 'client_secret', 'refresh_token'].forEach(function (field) {
+      assert(correctCredentials.hasOwnProperty(field));
+      assert(config.credentials.hasOwnProperty(field));
+      assert.notEqual(config.credentials[field],
+        correctCredentials[field]);
+    });
+    var agent = require('../..').start(config);
+    var app = express();
+    app.use('/', function () {
+      throw '0';
+    });
+    app.use(agent.express);
+    var server = app.listen(3000, function() {
+      nock.disableNetConnect();
+      nock.enableNetConnect('localhost');
+      var scope = nock('https://accounts.google.com')
+        .intercept('/o/oauth2/token', 'POST', function(body) {
+          assert.equal(body.client_id, correctCredentials.client_id);
+          assert.equal(body.client_secret, correctCredentials.client_secret);
+          assert.equal(body.refresh_token, correctCredentials.refresh_token);
+          return true;
+        }).reply(200, {
+          refresh_token: 'hello',
+          access_token: 'goodbye',
+          expiry_date: new Date(9999, 1, 1)
+        });
 
-    // Since we have to get an auth token, this always gets intercepted second
-    nock('https://clouderrorreporting.googleapis.com/v1beta1/projects')
-      .post('/0/events:report', function() {
-        t.true(scope.isDone());
-        nock.enableNetConnect();
-        nock.cleanAll();
-        server.close();
-        reattachOriginalListeners();
-        t.end();
-        return true;
-      }).reply(200);
+      // Since we have to get an auth token, this always gets intercepted second
+      nock('https://clouderrorreporting.googleapis.com/v1beta1/projects')
+        .post('/0/events:report', function() {
+          assert(scope.isDone());
+          nock.cleanAll();
+          server.close();
+          reattachOriginalListeners();
+          setImmediate(done);
+          return true;
+        }).reply(200);
 
-    http.get({port: 3000, path: '/'}, function(res) {});
-  });
-});
-
-test('Should ignore credentials if keyFilename is provided', function(t) {
-  process.removeAllListeners('uncaughtException');
-  var correctCredentials = require('../fixtures/gcloud-credentials.json');
-  var config = {
-    keyFilename: path.join('tests', 'fixtures', 'gcloud-credentials.json'),
-    credentials: {
-      client_id: 'a',
-      client_secret: 'b',
-      refresh_token: 'c',
-      type: 'authorized_user'
-    },
-    reportUncaughtExceptions: true
-  };
-  ['client_id', 'client_secret', 'refresh_token'].forEach(function (field) {
-    t.true(correctCredentials.hasOwnProperty(field));
-    t.true(config.credentials.hasOwnProperty(field));
-    t.notEqual(config.credentials[field],
-      correctCredentials[field]);
-  });
-  var agent = require('../..').start(config);
-  var app = express();
-  app.use('/', function () {
-    throw '0';
-  });
-  app.use(agent.express);
-  var server = app.listen(3000, function() {
-    nock.disableNetConnect();
-    nock.enableNetConnect('localhost');
-    var scope = nock('https://accounts.google.com')
-      .intercept('/o/oauth2/token', 'POST', function(body) {
-        t.equal(body.client_id, correctCredentials.client_id);
-        t.equal(body.client_secret, correctCredentials.client_secret);
-        t.equal(body.refresh_token, correctCredentials.refresh_token);
-        return true;
-      }).reply(200, {
-        refresh_token: 'hello',
-        access_token: 'goodbye',
-        expiry_date: new Date(9999, 1, 1)
-      });
-
-    // Since we have to get an auth token, this always gets intercepted second
-    nock('https://clouderrorreporting.googleapis.com/v1beta1/projects')
-      .post('/0/events:report', function() {
-        t.true(scope.isDone());
-        nock.enableNetConnect();
-        nock.cleanAll();
-        server.close();
-        reattachOriginalListeners();
-        t.end();
-        return true;
-      }).reply(200);
-
-    http.get({port: 3000, path: '/'}, function(res) {});
+      http.get({port: 3000, path: '/'}, function(res) {});
+    });
   });
 });
